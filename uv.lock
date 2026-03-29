@@ -275,7 +275,7 @@ sdist = { url = "https://files.pythonhosted.org/packages/93/09/7d04d7581ae3bb8b5
 [[package]]
 name = "chess-analyst"
 version = "0.1.0"
-source = { virtual = "." }
+source = { editable = "." }
 dependencies = [
     { name = "chromadb" },
     { name = "click" },
@@ -283,6 +283,7 @@ dependencies = [
     { name = "pydantic" },
     { name = "python-chess" },
     { name = "python-dotenv" },
+    { name = "requests" },
     { name = "rich" },
 ]
 
@@ -299,6 +300,7 @@ requires-dist = [
     { name = "pydantic", specifier = ">=2.12.5" },
     { name = "python-chess", specifier = ">=1.999" },
     { name = "python-dotenv", specifier = ">=1.2.2" },
+    { name = "requests", specifier = ">=2.33.0" },
     { name = "rich", specifier = ">=14.3.3" },
 ]
 

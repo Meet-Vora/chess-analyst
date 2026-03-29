@@ -1,0 +1,14 @@
+Metadata-Version: 2.4
+Name: chess-analyst
+Version: 0.1.0
+Summary: Add your description here
+Requires-Python: >=3.12
+Description-Content-Type: text/markdown
+Requires-Dist: chromadb>=1.5.5
+Requires-Dist: click>=8.3.1
+Requires-Dist: google-genai>=1.69.0
+Requires-Dist: pydantic>=2.12.5
+Requires-Dist: python-chess>=1.999
+Requires-Dist: python-dotenv>=1.2.2
+Requires-Dist: requests>=2.33.0
+Requires-Dist: rich>=14.3.3

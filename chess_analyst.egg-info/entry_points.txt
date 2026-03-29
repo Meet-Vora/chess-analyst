@@ -1,0 +1,2 @@
+[console_scripts]
+chess-analyst = source.main:cli

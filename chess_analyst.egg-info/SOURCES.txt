@@ -1,0 +1,17 @@
+README.md
+pyproject.toml
+chess_analyst.egg-info/PKG-INFO
+chess_analyst.egg-info/SOURCES.txt
+chess_analyst.egg-info/dependency_links.txt
+chess_analyst.egg-info/entry_points.txt
+chess_analyst.egg-info/requires.txt
+chess_analyst.egg-info/top_level.txt
+source/__init__.py
+source/analyzer.py
+source/db.py
+source/main.py
+source/parser.py
+source/retriever.py
+source/vectordb.py
+tests/test_db.py
+tests/test_parser.py
