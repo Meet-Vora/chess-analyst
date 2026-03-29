@@ -29,7 +29,7 @@ Before you run the tool, you just need to get it set up on your machine:
 
 ---
 
-## 2. Using the Tool: The Simple Workflow
+## 2. Setting Up Your Data Pipeline
 
 Using the tool happens in 3 super simple steps. 
 
@@ -48,17 +48,17 @@ We need to load that massive text file into your secure, local database. This st
 uv run chess-analyst ingest data/raw/your_new_games_file.pgn
 ```
 
-### Step 3: Trigger the AI "Coach"
-Now, you actually ask Gemini to read those games and grade your performance. Because the AI takes a few seconds to "think" about every single match, we recommend running small batches of 5-10 games at a time so you don't use up too many API requests at once!
+### Step 3: Analyze & Grade Your Games
+Now, you actually ask Gemini to read those games and grade your performance under the hood. Because the AI takes a few seconds to map out the vectors and generate the text for every single match, we recommend running small batches of 5-10 games at a time!
 ```bash
 uv run chess-analyst analyze --limit 5
 ```
 
 ---
 
-## 3. Viewing Your Results!
+## 3. The Coach: Viewing Your Results!
 
-Once you have analyzed a batch of games, you have two super cool ways to interact with the results.
+Once you have analyzed a batch of games, you have two super cool ways to interact with the AI to get coaching feedback on the results.
 
 **Look at a single game specifically:**
 If you want the AI's play-by-play breakdown of exactly what you did right and wrong in a specific match, use the `game` command with the Game's ID:
