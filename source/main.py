@@ -1,5 +1,9 @@
 import click
 from rich.console import Console
+from rich.panel import Panel
+from rich.table import Table
+from rich.markdown import Markdown
+from rich import box
 from dotenv import load_dotenv
 
 from . import parser
@@ -23,7 +27,8 @@ def ingest(pgn_file: str):
     """Ingests a PGN file and stores games into SQLite."""
     console.print(f"[bold cyan]Ingesting games from:[/bold cyan] {pgn_file}")
     
-    saved = parser.parse_and_store_pgn(pgn_file)
+    with console.status("[bold green]Crunching raw PGN data...[/bold green]", spinner="bouncingBall"):
+        saved = parser.parse_and_store_pgn(pgn_file)
     
     if saved > 0:
         console.print(f"[bold green]Successfully saved {saved} new games to the database![/bold green]")
@@ -51,21 +56,31 @@ def game(game_id: str):
     
     # Verdict is stored redundantly across phases, so just grab it from the first one
     if analyses and analyses[0].get('game_verdict'):
-        console.print(f"[bold green]Game Verdict:[/bold green] {analyses[0]['game_verdict']}")
+        console.print(f"\n[bold green]Verdict:[/bold green] {analyses[0]['game_verdict']}\n")
         
     for a in analyses:
-        console.print(f"\n[bold magenta]Phase: {a['phase'].upper()}[/bold magenta]")
-        console.print(f"[bold]Summary:[/bold] {a['narrative_summary']}")
-        console.print(f"[bold text-red]Mistakes:[/bold] {a['mistakes']}")
-        console.print(f"[bold text-green]Patterns:[/bold] {a['patterns_identified']}")
+        # Build the phase text natively as markdown
+        content = f"**Summary:** {a['narrative_summary']}\n\n"
+        content += f"**Mistakes:** {', '.join(a['mistakes']) if a.get('mistakes') else 'None'}\n\n"
+        content += f"**Patterns:** {', '.join(a['patterns_identified']) if a.get('patterns_identified') else 'None'}"
         
         if a.get('critical_moments'):
-            console.print(f"[bold text-yellow]Critical Moments:[/bold text-yellow] {a['critical_moments']}")
+            content += f"\n\n**Critical Moments:** {', '.join(a['critical_moments'])}"
         if a.get('tactical_motifs_missed'):
-            console.print(f"[bold text-blue]Missed Tactics:[/bold text-blue] {a['tactical_motifs_missed']}")
+            content += f"\n\n**Missed Tactics:** {', '.join(a['tactical_motifs_missed'])}"
             
         if a['phase'] == 'opening' and a.get('opening_assessment'):
-             console.print(f"[bold]Opening Assessment:[/bold] {a['opening_assessment']}")
+             content += f"\n\n**Opening Assessment:** {a['opening_assessment']}"
+             
+        # Render the text beautifully inside a custom boxed panel
+        panel = Panel(
+            Markdown(content), 
+            title=f"[bold magenta]{a['phase'].upper()}[/bold magenta]", 
+            title_align="left", 
+            border_style="cyan",
+            expand=False
+        )
+        console.print(panel)
 
 @cli.command()
 @click.argument('question')
@@ -90,8 +105,14 @@ def stats():
         cursor.execute("SELECT count(DISTINCT game_id) FROM game_analysis")
         analyzed_games = cursor.fetchone()[0]
         
-        console.print(f"[green]Total Games Ingested:[/green] {total_games}")
-        console.print(f"[green]Total Games Analyzed:[/green] {analyzed_games}")
+        table = Table(title="🗄️ Database Statistics", box=box.ROUNDED)
+        table.add_column("Metric", justify="right", style="cyan", no_wrap=True)
+        table.add_column("Count", style="magenta")
+        
+        table.add_row("Total Games Ingested", str(total_games))
+        table.add_row("Games Completely Analyzed", str(analyzed_games))
+        
+        console.print(table)
 
 if __name__ == '__main__':
     cli()

@@ -1,6 +1,8 @@
 import json
 from google import genai
 from rich.console import Console
+from rich.panel import Panel
+from rich.markdown import Markdown
 
 from . import vectordb
 
@@ -48,16 +50,23 @@ Please synthesize an answer mapping out the recurring themes, habits, and mistak
 """
     client = genai.Client()
     try:
-        response = client.models.generate_content(
-            model='gemini-2.5-flash',
-            contents=prompt,
-            config={
-                'temperature': 0.3
-            }
-        )
-        
-        console.print("\n[bold cyan]Analysis of Playstyle:[/bold cyan]")
-        console.print(f"{response.text}\n")
+        with console.status("[bold green]Synthesizing tactical data with Gemini...[/bold green]", spinner="dots"):
+            response = client.models.generate_content(
+                model='gemini-2.5-flash',
+                contents=prompt,
+                config={
+                    'temperature': 0.3
+                }
+            )
+            
+        console.print("\n")
+        console.print(Panel(
+            Markdown(response.text),
+            title="[bold cyan]🧠 AI Playstyle Analysis[/bold cyan]",
+            border_style="cyan",
+            expand=False
+        ))
+        console.print("\n")
         
         console.print("[bold green]Sources used for this analysis:[/bold green]")
         for meta in metadatas:

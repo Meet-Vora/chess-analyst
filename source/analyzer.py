@@ -140,3 +140,6 @@ Result: {game['result']}
                 
         except Exception as e:
             console.print(f"[red]Error analyzing game {game['game_id']}: {e}[/red]")
+            
+    # Notify the user that the entire batch is complete
+    console.print(f"\n[bold green]Analysis of {len(games)} games done![/bold green]")
