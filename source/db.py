@@ -110,3 +110,20 @@ def save_analysis(game_id: str, phase: str, summary: str, mistakes: list, patter
             opening_assessment
         ))
         conn.commit()
+
+def get_game(game_id: str):
+    """Fetches a specific game by its ID."""
+    with get_db() as conn:
+        conn.row_factory = sqlite3.Row
+        cursor = conn.cursor()
+        cursor.execute("SELECT * FROM games WHERE game_id = ?", (game_id,))
+        row = cursor.fetchone()
+        return dict(row) if row else None
+
+def get_game_analysis(game_id: str):
+    """Fetches the stored analysis phases for a specific game."""
+    with get_db() as conn:
+        conn.row_factory = sqlite3.Row
+        cursor = conn.cursor()
+        cursor.execute("SELECT * FROM game_analysis WHERE game_id = ?", (game_id,))
+        return [dict(row) for row in cursor.fetchall()]

@@ -11,6 +11,17 @@ from . import vectordb
 
 console = Console()
 
+AVAILABLE_MODELS = {
+    "gemini": {
+        "id": "gemini-2.5-flash",
+        "display_name": "Gemini 2.5 Flash"
+    },
+    "claude": {
+        "id": "claude-3-5-sonnet-20241022",
+        "display_name": "Claude 3.5 Sonnet"
+    }
+}
+
 class PhaseAnalysis(BaseModel):
     phase: str = Field(description="The phase of the game: 'opening', 'middlegame', or 'endgame'")
     narrative_summary: str = Field(description="A detailed tactical and strategic narrative of what happened in this phase")
@@ -24,16 +35,23 @@ class GameReview(BaseModel):
 def get_client():
     return genai.Client()
 
-def analyze_games(limit: int = 10, dry_run: bool = False):
+def analyze_games(limit: int = 10, dry_run: bool = False, game_id: str = None):
     """
     Fetches un-analyzed games from the DB and analyzes them using Gemini.
     """
-    games = db.get_unanalyzed_games(limit=limit)
-    if not games:
-        console.print("[green]No new games to analyze![/green]")
-        return
-    
-    console.print(f"Found [cyan]{len(games)}[/cyan] unanalyzed games.")
+    if game_id:
+        game = db.get_game(game_id)
+        if not game:
+            console.print(f"[red]Game with ID {game_id} not found in database![/red]")
+            return
+        games = [game]
+        console.print(f"Found [cyan]1[/cyan] requested game.")
+    else:
+        games = db.get_unanalyzed_games(limit=limit)
+        if not games:
+            console.print("[green]No new games to analyze![/green]")
+            return
+        console.print(f"Found [cyan]{len(games)}[/cyan] unanalyzed games.")
     
     if dry_run:
         console.print("[yellow]Dry run enabled. Would have analyzed the following games:[/yellow]")
@@ -43,7 +61,10 @@ def analyze_games(limit: int = 10, dry_run: bool = False):
 
     client = get_client()
     
-    for game in track(games, description="Analyzing games with Gemini..."):
+    # Easily swap out the active model key here
+    active_model = AVAILABLE_MODELS["gemini"]
+    
+    for game in track(games, description=f"Analyzing games with {active_model['display_name']}..."):
         prompt = f"""
 You are an expert chess analyst and coach. I am providing you with the PGN of a chess game.
 Please provide a deep, narrative tactical review of the game, breaking it down into opening, middlegame, and endgame phases.
@@ -57,7 +78,7 @@ Result: {game['result']}
 """
         try:
             response = client.models.generate_content(
-                model='gemini-2.5-flash',
+                model=active_model['id'],
                 contents=prompt,
                 config={
                     'response_mime_type': 'application/json',

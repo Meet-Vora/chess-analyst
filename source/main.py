@@ -33,9 +33,28 @@ def ingest(pgn_file: str):
 @cli.command()
 @click.option('--limit', default=10, help="Maximum number of games to analyze in this run.")
 @click.option('--dry-run', is_flag=True, help="Show which games would be analyzed without invoking the LLM.")
-def analyze(limit: int, dry_run: bool):
+@click.option('--game-id', default=None, help="Process a specific game by ID.")
+def analyze(limit: int, dry_run: bool, game_id: str):
     """Analyzes unreviewed games via Gemini and embeds insights into ChromaDB."""
-    analyzer.analyze_games(limit=limit, dry_run=dry_run)
+    analyzer.analyze_games(limit=limit, dry_run=dry_run, game_id=game_id)
+
+@cli.command()
+@click.argument('game_id')
+def game(game_id: str):
+    """Shows the stored analysis for a specific game ID."""
+    analyses = db.get_game_analysis(game_id)
+    if not analyses:
+        console.print(f"[yellow]No analysis found for game '{game_id}'. Have you run 'analyze' on it?[/yellow]")
+        return
+        
+    console.print(f"[bold cyan]Analysis for Game:[/bold cyan] {game_id}")
+    for a in analyses:
+        console.print(f"\n[bold magenta]Phase: {a['phase'].upper()}[/bold magenta]")
+        console.print(f"[bold]Summary:[/bold] {a['narrative_summary']}")
+        console.print(f"[bold text-red]Mistakes:[/bold] {a['mistakes']}")
+        console.print(f"[bold text-green]Patterns:[/bold] {a['patterns_identified']}")
+        if a['phase'] == 'opening' and a['opening_assessment']:
+             console.print(f"[bold]Opening Assessment:[/bold] {a['opening_assessment']}")
 
 @cli.command()
 @click.argument('question')
