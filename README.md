@@ -70,7 +70,20 @@ uv run chess-analyst game YOUR-GAME-ID
 This is the best feature in the app. The AI remembers all the mistakes across every analyzed game. You can literally ask it questions about your overall playstyle, and it will search all your past games to generate an answer!
 ```bash
 uv run chess-analyst query "I keep losing when I play the Sicilian Defense as black. Based on my past games, what are the biggest endgame mistakes I make?"
-```ks.
+```
+
+### 5. Statistics
+See the exact footprint of your databases.
+```bash
+uv run chess-analyst stats
+```
+
+---
+
+## 🗄️ Architecture & Folder Structure
+
+- `source/main.py`: The `click` routing hub and CLI UI definitions.
+- `source/parser.py`: Houses the purely local `python-chess` integration mapping flat PGNs into SQLite metadata blocks.
 - `source/analyzer.py`: The rigid Pydantic engine enforcing JSON contracts with Gemini 2.5 Flash to ensure reliable analysis shapes.
 - `source/vectordb.py`: Defines the `gemini-embedding-001` integration to store multi-dimensional representations of the tactical outputs into Chroma.
 - `source/retriever.py`: Synthesizes vector searches via RAG (Retrieval-Augmented Generation).
