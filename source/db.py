@@ -1,0 +1,112 @@
+import sqlite3
+import os
+import json
+from contextlib import contextmanager
+
+# Local path logic
+DB_PATH = os.path.join(os.path.dirname(os.path.dirname(__file__)), "data", "games.db")
+
+def init_db():
+    """Initializes the SQLite database with necessary tables."""
+    os.makedirs(os.path.dirname(DB_PATH), exist_ok=True)
+    
+    with get_db() as conn:
+        cursor = conn.cursor()
+        
+        # Games Table
+        cursor.execute("""
+            CREATE TABLE IF NOT EXISTS games (
+                game_id TEXT PRIMARY KEY,
+                pgn_raw TEXT NOT NULL,
+                white TEXT,
+                black TEXT,
+                result TEXT,
+                date TEXT,
+                time_control TEXT,
+                opening_name TEXT,
+                opening_eco TEXT,
+                num_moves INTEGER,
+                source TEXT
+            )
+        """)
+        
+        # Analysis Table
+        cursor.execute("""
+            CREATE TABLE IF NOT EXISTS game_analysis (
+                game_id TEXT,
+                phase TEXT,
+                narrative_summary TEXT,
+                mistakes TEXT, -- JSON Array
+                patterns_identified TEXT, -- JSON Array
+                opening_assessment TEXT,
+                PRIMARY KEY (game_id, phase),
+                FOREIGN KEY (game_id) REFERENCES games(game_id)
+            )
+        """)
+        
+        conn.commit()
+
+@contextmanager
+def get_db():
+    conn = sqlite3.connect(DB_PATH)
+    try:
+        yield conn
+    finally:
+        conn.close()
+
+def insert_game(game_data: dict) -> bool:
+    """Inserts a game into the DB. Returns True if inserted, False if it already existed."""
+    with get_db() as conn:
+        cursor = conn.cursor()
+        try:
+            cursor.execute("""
+                INSERT INTO games (game_id, pgn_raw, white, black, result, date, time_control, opening_name, opening_eco, num_moves, source)
+                VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
+            """, (
+                game_data.get('game_id'),
+                game_data.get('pgn_raw'),
+                game_data.get('white'),
+                game_data.get('black'),
+                game_data.get('result'),
+                game_data.get('date'),
+                game_data.get('time_control'),
+                game_data.get('opening_name'),
+                game_data.get('opening_eco'),
+                game_data.get('num_moves'),
+                game_data.get('source')
+            ))
+            conn.commit()
+            return True
+        except sqlite3.IntegrityError:
+            return False
+
+def get_unanalyzed_games(limit=None):
+    """Fetches games that don't have an analysis yet, up to a given limit."""
+    with get_db() as conn:
+        conn.row_factory = sqlite3.Row
+        cursor = conn.cursor()
+        query = """
+            SELECT * FROM games
+            WHERE game_id NOT IN (SELECT DISTINCT game_id FROM game_analysis)
+        """
+        if limit:
+            query += f" LIMIT {int(limit)}"
+            
+        cursor.execute(query)
+        return [dict(row) for row in cursor.fetchall()]
+
+def save_analysis(game_id: str, phase: str, summary: str, mistakes: list, patterns: list, opening_assessment: str):
+    with get_db() as conn:
+        cursor = conn.cursor()
+        cursor.execute("""
+            INSERT OR REPLACE INTO game_analysis (game_id, phase, narrative_summary, mistakes, patterns_identified, opening_assessment)
+            VALUES (?, ?, ?, ?, ?, ?)
+        """, (
+            game_id,
+            phase,
+            summary,
+            json.dumps(mistakes),
+            json.dumps(patterns),
+            opening_assessment
+        ))
+        conn.commit()
