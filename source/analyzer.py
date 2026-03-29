@@ -64,6 +64,12 @@ def analyze_games(limit: int = 10, dry_run: bool = False, game_id: str = None):
     # Easily swap out the active model key here
     active_model = AVAILABLE_MODELS["gemini"]
     
+    # Temperature controls the "creativity" of the LLM scale (0.0 to 1.0+). 
+    # Because we are asking Gemini to act as an analytical chess coach and output strict, 
+    # structured JSON, we use a low temperature to prioritize analytical precision 
+    # and determinism over hallucination or creative writing.
+    ANALYSIS_TEMPERATURE = 0.2
+    
     for game in track(games, description=f"Analyzing games with {active_model['display_name']}..."):
         prompt = f"""
 You are an expert chess analyst and coach. I am providing you with the PGN of a chess game.
@@ -83,7 +89,7 @@ Result: {game['result']}
                 config={
                     'response_mime_type': 'application/json',
                     'response_schema': GameReview,
-                    'temperature': 0.2
+                    'temperature': ANALYSIS_TEMPERATURE
                 }
             )
             
