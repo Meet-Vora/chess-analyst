@@ -2,4 +2,5 @@
 2. make the query command output less verbose -- too wordy right now
 3. make the query command more structured -- maybe use a table format to display the results?
 4. what's the game command? how to use that?
-5. main.py::L87 not sure what this parameter is meant to do. can you explain more?
+5. can you explain more?main.py::L87 not sure what this parameter is meant to do. 
+6. oh maybe I can add a roastme mode, tell me how fucking retarded I am for each blunder and mistake
