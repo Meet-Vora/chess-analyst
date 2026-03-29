@@ -22,14 +22,23 @@ AVAILABLE_MODELS = {
     }
 }
 
+# These Pydantic models act as "Instruction Contracts" between our code and the LLM.
+# By passing these to the Gemini API via the `response_schema` parameter, the SDK 
+# forces the AI to securely return perfectly formatted, predictable JSON output 
+# (with the exact fields and lists we define below) instead of free-flowing text.
+# The `description` fields act as mini-prompts instructing the AI how to generate a value.
+
 class PhaseAnalysis(BaseModel):
     phase: str = Field(description="The phase of the game: 'opening', 'middlegame', or 'endgame'")
     narrative_summary: str = Field(description="A detailed tactical and strategic narrative of what happened in this phase")
     mistakes: List[str] = Field(description="List of critical mistakes, blunders, or conceptual errors")
     patterns_identified: List[str] = Field(description="Recurring patterns of play, either positive or negative (e.g. 'weakness on light squares', 'strong knight outpost')")
+    critical_moments: List[str] = Field(description="List of turning points or move numbers where the game's evaluation drastically shifted")
+    tactical_motifs_missed: List[str] = Field(description="Specific tactical motifs missed, such as 'knight fork', 'pin', or 'discovered attack'")
 
 class GameReview(BaseModel):
     opening_assessment: str = Field(description="A short assessment of how the opening was played relative to book expectations")
+    game_verdict: str = Field(description="A 1-sentence summary of why the game was ultimately won or lost")
     phases: List[PhaseAnalysis] = Field(description="A breakdown of the game into its 3 phases")
 
 def get_client():
@@ -106,11 +115,20 @@ Result: {game['result']}
                     summary=phase_data.narrative_summary,
                     mistakes=phase_data.mistakes,
                     patterns=phase_data.patterns_identified,
-                    opening_assessment=review.opening_assessment
+                    opening_assessment=review.opening_assessment,
+                    critical_moments=phase_data.critical_moments,
+                    tactical_motifs_missed=phase_data.tactical_motifs_missed,
+                    game_verdict=review.game_verdict
                 )
                 
                 # Embedding context is a combined text of the summary, mistakes and patterns
-                embedding_text = f"Phase: {phase_data.phase}\nSummary: {phase_data.narrative_summary}\nMistakes: {', '.join(phase_data.mistakes)}\nPatterns: {', '.join(phase_data.patterns_identified)}"
+                embedding_text = (f"Phase: {phase_data.phase}\n"
+                                  f"Summary: {phase_data.narrative_summary}\n"
+                                  f"Mistakes: {', '.join(phase_data.mistakes)}\n"
+                                  f"Patterns: {', '.join(phase_data.patterns_identified)}\n"
+                                  f"Critical Moments: {', '.join(phase_data.critical_moments)}\n"
+                                  f"Missed Tactics: {', '.join(phase_data.tactical_motifs_missed)}\n"
+                                  f"Game Verdict: {review.game_verdict}")
                 
                 # Adding it to Chroma
                 vectordb.add_analysis_embedding(

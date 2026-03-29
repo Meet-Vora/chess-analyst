@@ -39,10 +39,20 @@ def init_db():
                 mistakes TEXT, -- JSON Array
                 patterns_identified TEXT, -- JSON Array
                 opening_assessment TEXT,
+                critical_moments TEXT, -- JSON Array
+                tactical_motifs_missed TEXT, -- JSON Array
+                game_verdict TEXT,
                 PRIMARY KEY (game_id, phase),
                 FOREIGN KEY (game_id) REFERENCES games(game_id)
             )
         """)
+        
+        # Idempotent migrations for existing MVP databases
+        for col in ["critical_moments TEXT", "tactical_motifs_missed TEXT", "game_verdict TEXT"]:
+            try:
+                cursor.execute(f"ALTER TABLE game_analysis ADD COLUMN {col}")
+            except sqlite3.OperationalError:
+                pass
         
         conn.commit()
 
@@ -95,19 +105,26 @@ def get_unanalyzed_games(limit=None):
         cursor.execute(query)
         return [dict(row) for row in cursor.fetchall()]
 
-def save_analysis(game_id: str, phase: str, summary: str, mistakes: list, patterns: list, opening_assessment: str):
+def save_analysis(game_id: str, phase: str, summary: str, mistakes: list, patterns: list, opening_assessment: str,
+                  critical_moments: list, tactical_motifs_missed: list, game_verdict: str):
     with get_db() as conn:
         cursor = conn.cursor()
         cursor.execute("""
-            INSERT OR REPLACE INTO game_analysis (game_id, phase, narrative_summary, mistakes, patterns_identified, opening_assessment)
-            VALUES (?, ?, ?, ?, ?, ?)
+            INSERT OR REPLACE INTO game_analysis (
+                game_id, phase, narrative_summary, mistakes, patterns_identified, 
+                opening_assessment, critical_moments, tactical_motifs_missed, game_verdict
+            )
+            VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)
         """, (
             game_id,
             phase,
             summary,
             json.dumps(mistakes),
             json.dumps(patterns),
-            opening_assessment
+            opening_assessment,
+            json.dumps(critical_moments),
+            json.dumps(tactical_motifs_missed),
+            game_verdict
         ))
         conn.commit()
 

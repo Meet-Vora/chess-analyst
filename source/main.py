@@ -48,12 +48,23 @@ def game(game_id: str):
         return
         
     console.print(f"[bold cyan]Analysis for Game:[/bold cyan] {game_id}")
+    
+    # Verdict is stored redundantly across phases, so just grab it from the first one
+    if analyses and analyses[0].get('game_verdict'):
+        console.print(f"[bold green]Game Verdict:[/bold green] {analyses[0]['game_verdict']}")
+        
     for a in analyses:
         console.print(f"\n[bold magenta]Phase: {a['phase'].upper()}[/bold magenta]")
         console.print(f"[bold]Summary:[/bold] {a['narrative_summary']}")
         console.print(f"[bold text-red]Mistakes:[/bold] {a['mistakes']}")
         console.print(f"[bold text-green]Patterns:[/bold] {a['patterns_identified']}")
-        if a['phase'] == 'opening' and a['opening_assessment']:
+        
+        if a.get('critical_moments'):
+            console.print(f"[bold text-yellow]Critical Moments:[/bold text-yellow] {a['critical_moments']}")
+        if a.get('tactical_motifs_missed'):
+            console.print(f"[bold text-blue]Missed Tactics:[/bold text-blue] {a['tactical_motifs_missed']}")
+            
+        if a['phase'] == 'opening' and a.get('opening_assessment'):
              console.print(f"[bold]Opening Assessment:[/bold] {a['opening_assessment']}")
 
 @cli.command()
