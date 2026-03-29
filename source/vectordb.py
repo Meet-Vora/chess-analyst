@@ -15,12 +15,20 @@ class GeminiEmbeddingFunction(EmbeddingFunction):
         """Embeds a list of strings."""
         if not input:
             return []
-        
-        response = self.client.models.embed_content(
-            model='text-embedding-004',
-            contents=input
-        )
-        return [list(e.values) for e in response.embeddings]
+            
+        embeddings = []
+        # The new genai SDK treats a list passed to 'contents' as a single multi-part document, 
+        # which isn't supported for embeddings. We must embed them individually!
+        for doc in input:
+            response = self.client.models.embed_content(
+                model='gemini-embedding-001',
+                contents=doc
+            )
+            # Depending on the SDK, response.embeddings is either a list of Embeddings or directly contains .values
+            embed_values = response.embeddings[0].values if isinstance(response.embeddings, list) else response.embeddings.values
+            embeddings.append(list(embed_values))
+            
+        return embeddings
 
 def get_chroma_client():
     os.makedirs(CHROMA_DB_PATH, exist_ok=True)
