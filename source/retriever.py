@@ -63,7 +63,8 @@ Here are the most relevant tactical insights and mistakes from my past games rel
 
 Please synthesize an answer mapping out the recurring themes, habits, and mistakes across these specific games. Focus on specific strategic themes and constructive advice.
 """
-    client = instructor.from_litellm(litellm.completion)
+    mode = instructor.Mode.GEMINI_JSON if "gemini" in model else instructor.Mode.TOOLS
+    client = instructor.from_litellm(litellm.completion, mode=mode)
     try:
         with console.status(f"[bold green]Synthesizing structured tactical data with {model}...[/bold green]", spinner="dots"):
             synthesis = client.chat.completions.create(

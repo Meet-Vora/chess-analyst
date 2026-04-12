@@ -34,9 +34,10 @@ class GameReview(BaseModel):
     game_verdict: str = Field(description="A 1-sentence summary of why the game was ultimately won or lost")
     phases: List[PhaseAnalysis] = Field(description="A breakdown of the game into its 3 phases")
 
-def get_client():
+def get_client(model_name: str):
     # Instructor wraps litellm seamlessly to enforce Pydantic structures for ANY provider
-    return instructor.from_litellm(litellm.completion)
+    mode = instructor.Mode.GEMINI_JSON if "gemini" in model_name else instructor.Mode.TOOLS
+    return instructor.from_litellm(litellm.completion, mode=mode)
 
 def analyze_games(limit: int = 10, dry_run: bool = False, game_id: str = None, model: str = "gemini/gemini-2.5-flash", embedding_model: str = "gemini/text-embedding-004"):
     """
@@ -62,7 +63,7 @@ def analyze_games(limit: int = 10, dry_run: bool = False, game_id: str = None, m
             console.print(f" - ID: {g['game_id']} | {g['white']} vs {g['black']} | {g['opening_name']}")
         return
 
-    client = get_client()
+    client = get_client(model)
     
     # Temperature controls the "creativity" of the LLM scale (0.0 to 1.0+). 
     # Because we are asking Gemini to act as an analytical chess coach and output strict, 
