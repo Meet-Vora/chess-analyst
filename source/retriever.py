@@ -1,10 +1,25 @@
 import json
 import litellm
+import instructor
+from pydantic import BaseModel, Field
+from typing import List
 from rich.console import Console
 from rich.panel import Panel
 from rich.markdown import Markdown
+from rich.table import Table
+from rich import box
 
 from . import vectordb
+
+class Theme(BaseModel):
+    name: str = Field(description="Short name of the recurring theme or mistake (e.g., 'Weakness on Long Diagonal', 'Time Trouble Blunders')")
+    description: str = Field(description="A concise, 1-2 sentence explanation of how this theme appears in the games and why it's happening.")
+    frequency: str = Field(description="How often this appears in the games provided (e.g., 'Often', 'Rarely')")
+
+class QuerySynthesis(BaseModel):
+    summary: str = Field(description="A concise 2-3 sentence overall summary of your answer to the query.")
+    key_themes: List[Theme] = Field(description="A list of 2-4 primary recurring patterns, themes, or mistakes mapping to the query.")
+    actionable_advice: str = Field(description="One very short, actionable sentence of advice on how to improve this specific issue in the future.")
 
 console = Console()
 
@@ -46,25 +61,37 @@ Here are the most relevant tactical insights and mistakes from my past games rel
 
 {combined_context}
 
-Please synthesize an answer mapping out the recurring themes, habits, and mistakes across these specific games. Focus on narrative, strategic concepts, and specific positional concepts rather than just win/loss counts. Be constructive and specific.
+Please synthesize an answer mapping out the recurring themes, habits, and mistakes across these specific games. Focus on specific strategic themes and constructive advice.
 """
+    client = instructor.from_litellm(litellm.completion)
     try:
-        with console.status(f"[bold green]Synthesizing tactical data with {model}...[/bold green]", spinner="dots"):
-            response = litellm.completion(
+        with console.status(f"[bold green]Synthesizing structured tactical data with {model}...[/bold green]", spinner="dots"):
+            synthesis = client.chat.completions.create(
                 model=model,
                 messages=[{"role": "user", "content": prompt}],
+                response_model=QuerySynthesis,
                 temperature=0.3
             )
-            response_text = response.choices[0].message.content
             
         console.print("\n")
         console.print(Panel(
-            Markdown(response_text),
+            Markdown(synthesis.summary),
             title="[bold cyan]🧠 AI Playstyle Analysis[/bold cyan]",
             border_style="cyan",
             expand=False
         ))
         console.print("\n")
+        
+        table = Table(title="🔍 Key Themes & Mistakes", box=box.ROUNDED)
+        table.add_column("Theme", style="bold magenta", justify="left")
+        table.add_column("Frequency", style="bold yellow", justify="left")
+        table.add_column("Description", style="white", justify="left")
+        
+        for theme in synthesis.key_themes:
+            table.add_row(theme.name, theme.frequency, theme.description)
+            
+        console.print(table)
+        console.print(f"\n[bold green]💡 Actionable Advice:[/bold green] {synthesis.actionable_advice}\n")
         
         console.print("[bold green]Sources used for this analysis:[/bold green]")
         for meta in metadatas:

@@ -83,16 +83,25 @@ def game(game_id: str):
     if analyses and analyses[0].get('game_verdict'):
         console.print(f"\n[bold green]Verdict:[/bold green] {analyses[0]['game_verdict']}\n")
         
+    import json
     for a in analyses:
+        # Parse JSON lists back into Python lists cleanly or default to empty lists
+        mistakes = json.loads(a.get('mistakes') or "[]")
+        patterns = json.loads(a.get('patterns_identified') or "[]")
+        critical_moments = json.loads(a.get('critical_moments') or "[]")
+        missed_tactics = json.loads(a.get('tactical_motifs_missed') or "[]")
+        key_strengths = json.loads(a.get('key_strengths') or "[]")
+
         # Build the phase text natively as markdown
         content = f"**Summary:** {a['narrative_summary']}\n\n"
-        content += f"**Mistakes:** {', '.join(a['mistakes']) if a.get('mistakes') else 'None'}\n\n"
-        content += f"**Patterns:** {', '.join(a['patterns_identified']) if a.get('patterns_identified') else 'None'}"
+        content += f"**Strengths / Good Play:** {', '.join(key_strengths) if key_strengths else 'None'}\n\n"
+        content += f"**Mistakes:** {', '.join(mistakes) if mistakes else 'None'}\n\n"
+        content += f"**Patterns:** {', '.join(patterns) if patterns else 'None'}"
         
-        if a.get('critical_moments'):
-            content += f"\n\n**Critical Moments:** {', '.join(a['critical_moments'])}"
-        if a.get('tactical_motifs_missed'):
-            content += f"\n\n**Missed Tactics:** {', '.join(a['tactical_motifs_missed'])}"
+        if critical_moments:
+            content += f"\n\n**Critical Moments:** {', '.join(critical_moments)}"
+        if missed_tactics:
+            content += f"\n\n**Missed Tactics:** {', '.join(missed_tactics)}"
             
         if a['phase'] == 'opening' and a.get('opening_assessment'):
              content += f"\n\n**Opening Assessment:** {a['opening_assessment']}"

@@ -23,6 +23,7 @@ console = Console()
 class PhaseAnalysis(BaseModel):
     phase: str = Field(description="The phase of the game: 'opening', 'middlegame', or 'endgame'")
     narrative_summary: str = Field(description="A detailed tactical and strategic narrative of what happened in this phase")
+    key_strengths: List[str] = Field(description="List of things the player did well, such as good moves, strong opening principles, effective piece trading, or solid strategic play")
     mistakes: List[str] = Field(description="List of critical mistakes, blunders, or conceptual errors")
     patterns_identified: List[str] = Field(description="Recurring patterns of play, either positive or negative (e.g. 'weakness on light squares', 'strong knight outpost')")
     critical_moments: List[str] = Field(description="List of turning points or move numbers where the game's evaluation drastically shifted")
@@ -74,6 +75,7 @@ def analyze_games(limit: int = 10, dry_run: bool = False, game_id: str = None, m
 You are an expert chess analyst and coach. I am providing you with the PGN of a chess game.
 Please provide a deep, narrative tactical review of the game, breaking it down into opening, middlegame, and endgame phases.
 Do not just provide engine evaluations; explain the *ideas* behind the moves, the strategic themes (e.g., pawn structures, outposts, weaknesses), and recurring playstyle patterns.
+Most importantly, it is crucial that you analyze what I did well (e.g. good moves, solid openings, favorable trading, positional mastery) in addition to analyzing my mistakes.
 
 Game PGN:
 {game['pgn_raw']}
@@ -100,12 +102,14 @@ Result: {game['result']}
                     opening_assessment=review.opening_assessment,
                     critical_moments=phase_data.critical_moments,
                     tactical_motifs_missed=phase_data.tactical_motifs_missed,
-                    game_verdict=review.game_verdict
+                    game_verdict=review.game_verdict,
+                    key_strengths=phase_data.key_strengths
                 )
                 
                 # Embedding context is a combined text of the summary, mistakes and patterns
                 embedding_text = (f"Phase: {phase_data.phase}\n"
                                   f"Summary: {phase_data.narrative_summary}\n"
+                                  f"Strengths/Good Play: {', '.join(phase_data.key_strengths)}\n"
                                   f"Mistakes: {', '.join(phase_data.mistakes)}\n"
                                   f"Patterns: {', '.join(phase_data.patterns_identified)}\n"
                                   f"Critical Moments: {', '.join(phase_data.critical_moments)}\n"
