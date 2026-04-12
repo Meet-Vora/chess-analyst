@@ -106,6 +106,7 @@ def get_unanalyzed_games(limit=None):
         query = """
             SELECT * FROM games
             WHERE game_id NOT IN (SELECT DISTINCT game_id FROM game_analysis)
+            ORDER BY date DESC
         """
         if limit:
             query += f" LIMIT {int(limit)}"

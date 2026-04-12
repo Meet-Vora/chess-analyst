@@ -1,4 +1,7 @@
 import click
+import sys
+import os
+import subprocess
 from rich.console import Console
 from rich.panel import Panel
 from rich.table import Table
@@ -21,6 +24,61 @@ console = Console()
 def cli():
     """Chess Analyst CLI: A pipeline for reasoning over playstyles."""
     pass
+
+@cli.command()
+def setup():
+    """Interactive wizard to rapidly configure Chess Analyst."""
+    from rich.panel import Panel
+    console.print(Panel("[bold cyan]Welcome to Chess Analyst Setup![/bold cyan]\nWe'll get you ready to analyze your games in under a minute.", expand=False))
+    
+    # 1. API Keys
+    console.print("\n[bold]Step 1: AI Provider Keys[/bold]")
+    console.print("You need at least one API key (Gemini, Anthropic, OpenAI). Press Enter to skip any you don't have.")
+    
+    env_content = ""
+    gemini_key = click.prompt("Google Gemini API Key", default="", hide_input=True)
+    if gemini_key: env_content += f'GEMINI_API_KEY="{gemini_key}"\n'
+    
+    anthropic_key = click.prompt("Anthropic API Key (Claude)", default="", hide_input=True)
+    if anthropic_key: env_content += f'ANTHROPIC_API_KEY="{anthropic_key}"\n'
+    
+    openai_key = click.prompt("OpenAI API Key (GPT)", default="", hide_input=True)
+    if openai_key: env_content += f'OPENAI_API_KEY="{openai_key}"\n'
+    
+    if env_content:
+        with open(".env", "a") as f:
+            f.write(env_content)
+        console.print("[green]Saved API keys to .env file![/green]")
+        load_dotenv(override=True)
+    else:
+        console.print("[yellow]No API keys provided! You will need to manually add them to .env later.[/yellow]")
+        
+    # 2. Download Games
+    console.print("\n[bold]Step 2: Download Your Chess.com History[/bold]")
+    username = click.prompt("What is your Chess.com username? (Leave blank to skip)", default="")
+    
+    if username:
+        console.print(f"[cyan]Downloading games for {username} (this might take a moment)...[/cyan]")
+        script_path = os.path.join(os.path.dirname(__file__), "..", "scripts", "download_pgn.py")
+        result = subprocess.run([sys.executable, script_path, username])
+        if result.returncode != 0:
+             console.print("[red]Failed to download games. Let's skip to the next step.[/red]")
+        else:
+             console.print("[green]Downloaded games successfully![/green]")
+             console.print("\n[bold]Step 3: Ingest Games[/bold]")
+             with console.status("[bold green]Ingesting all downloaded games...[/bold green]", spinner="bouncingBall"):
+                 raw_dir = os.path.join(os.path.dirname(__file__), "..", "data", "raw")
+                 os.makedirs(raw_dir, exist_ok=True)
+                 saved = parser.parse_and_store_all_pgns(raw_dir)
+                 console.print(f"[bold green]Successfully saved {saved} new games to the database![/bold green]")
+             
+             console.print("\n[bold]Step 4: AI Analysis[/bold]")
+             analyze_games = click.confirm("Would you like to analyze some of these games now to get immediate feedback?", default=True)
+             if analyze_games:
+                 num_games = click.prompt("How many games would you like to analyze?", default=5, type=int)
+                 analyzer.analyze_games(limit=num_games, dry_run=False, game_id=None, model="gemini/gemini-2.5-flash", embedding_model="gemini/text-embedding-004")
+             
+    console.print("\n[bold cyan]Setup Complete! You're ready to use Chess Analyst.[/bold cyan]")
 
 @cli.command()
 @click.argument('pgn_file', type=click.Path(exists=True))

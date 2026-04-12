@@ -111,34 +111,31 @@ Sources used for this analysis:
 ## 🚀 Quick Setup
 
 > [!NOTE]
-> The system defaults to Google's Gemini models, but strictly supports an agnostic `litellm` interface. You will need to generate API keys for the providers you wish to use. We never commit `.env` secret files directly to Git.
+> The system defaults to Google's Gemini models, but strictly supports an agnostic `litellm` interface. You will need to generate API keys for the providers you wish to use.
 
-1. **Obtain API Keys**: Grab your key for Gemini from [Google AI Studio](https://aistudio.google.com/app/apikey), or equivalents from Anthropic or OpenAI.
-2. **Save your secret Key**: Right in the main `chess-analyst` folder, create a new file named exactly `.env` and paste your keys inside like this:
-    ```ini
-    GEMINI_API_KEY="your-secret-key"
-    ANTHROPIC_API_KEY="your-anthropic-key"
-    OPENAI_API_KEY="your-openai-key"
-    ```
-3. **Install the dependencies**: Open your terminal here and install via `uv`:
+1. **Install the dependencies**: Open your terminal here and install the full environment via `uv`:
     ```bash
     uv sync
+    ```
+2. **Run the Interactive Setup**: We designed a single onboarding command that handles API keys, downloads your Chess.com match history, syncs it to the local SQLite database, and automatically analyzes your first batch of games!
+    ```bash
+    uv run chess-analyst setup
     ```
 
 ---
 
 ## 🛠️ Usage
 
-Using the pipeline operates in 3 simple phases:
+Once your environment is set up (via `chess-analyst setup`), you can utilize the engine manually in 3 simple phases:
 
-### Step 1: Download & Ingest
-First, download your history directly from Chess.com. Then load that large text file into your secure, local database. This step is 100% offline.
+### Phase 1: Download & Ingest (Manual)
+If you didn't use the setup wizard or want to fetch new games, you can download your history directly from Chess.com and ingest it into your secure, local database. 
 ```bash
 uv run python scripts/download_pgn.py YOUR_CHESSCOM_USERNAME
 uv run chess-analyst ingest data/raw/your_new_games_file.pgn
 ```
 
-### Step 2: Analyze & Grade Your Games
+### Phase 2: Analyze & Grade Your Games
 Have your model read ingested games and extract tactical arrays. You can optionally swap out the reasoning engine and the embedding engine via CLI flags.
 ```bash
 # Using defaults (Gemini 2.5 Flash / Gemini Embedding)
