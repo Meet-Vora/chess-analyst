@@ -18,7 +18,7 @@ def resolve_model(model_str: str) -> str:
 
 DEFAULT_MODEL_ALIAS = "gemini"
 DEFAULT_MODEL_FQN = resolve_model(DEFAULT_MODEL_ALIAS)
-DEFAULT_EMBEDDING_MODEL = "gemini/embedding-001"
+EMBEDDING_MODEL = "text-embedding-004"
 
 # Temperature controls the "creativity" of the LLM scale (0.0 to 1.0+). 
 # Because we are asking it to act as an analytical chess coach and output strict, 

@@ -24,13 +24,13 @@ class QuerySynthesis(BaseModel):
 
 console = Console()
 
-def query_playstyle(question: str, model: str, embedding_model: str, n_results: int = 5):
+def query_playstyle(question: str, model: str, n_results: int = 5):
     """
     Given a natural language query, search the vector DB for relevant game analyses, 
     and ask the model to synthesize an answer.
     """
     try:
-        results = vectordb.query_analyses(query_text=question, n_results=n_results, embedding_model=embedding_model)
+        results = vectordb.query_analyses(query_text=question, n_results=n_results)
     except Exception as e:
         console.print(f"[red]Error querying ChromaDB: {e}[/red]")
         return

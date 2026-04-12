@@ -76,7 +76,7 @@ def setup():
              analyze_games = click.confirm("Would you like to analyze some of these games now to get immediate feedback?", default=True)
              if analyze_games:
                  num_games = click.prompt("How many games would you like to analyze?", default=5, type=int)
-                 analyzer.analyze_games(limit=num_games, dry_run=False, game_id=None, model=model_config.DEFAULT_MODEL_FQN, embedding_model=model_config.DEFAULT_EMBEDDING_MODEL)
+                 analyzer.analyze_games(limit=num_games, dry_run=False, game_id=None, model=model_config.DEFAULT_MODEL_FQN)
              
     console.print("\n[bold cyan]Setup Complete! You're ready to use Chess Analyst.[/bold cyan]")
 
@@ -99,16 +99,14 @@ def ingest(pgn_file: str):
 @click.option('--dry-run', is_flag=True, help="Show which games would be analyzed without invoking the LLM.")
 @click.option('--game-id', default=None, help="Process a specific game by ID.")
 @click.option('--model', default=model_config.DEFAULT_MODEL_ALIAS, help="Model to use for analysis (alias or litellm string, e.g. 'claude', 'gpt-4o').")
-@click.option('--embedding-model', default=model_config.DEFAULT_EMBEDDING_MODEL, help="Model to use for embedding (e.g. 'text-embedding-3-small').")
-def analyze(limit: int, dry_run: bool, game_id: str, model: str, embedding_model: str):
+def analyze(limit: int, dry_run: bool, game_id: str, model: str):
     """Analyzes unreviewed games and embeds insights into ChromaDB."""
     resolved_model = model_config.resolve_model(model)
     analyzer.analyze_games(
         limit=limit, 
         dry_run=dry_run, 
         game_id=game_id, 
-        model=resolved_model,
-        embedding_model=embedding_model
+        model=resolved_model
     )
 
 @cli.command()
@@ -163,16 +161,14 @@ def game(game_id: str):
 @click.argument('question')
 @click.option('--n-results', default=5, help="Number of related game phases to synthesize over.")
 @click.option('--model', default=model_config.DEFAULT_MODEL_ALIAS, help="Model to use for synthesis (alias or litellm string, e.g. 'claude', 'gpt-4o').")
-@click.option('--embedding-model', default=model_config.DEFAULT_EMBEDDING_MODEL, help="Model to use for embedding vector search.")
-def query(question: str, n_results: int, model: str, embedding_model: str):
+def query(question: str, n_results: int, model: str):
     """Queries playstyle history by searching past game analyses."""
     console.print(f"[bold cyan]Querying history for:[/bold cyan] {question}")
     resolved_model = model_config.resolve_model(model)
     retriever.query_playstyle(
         question=question, 
         n_results=n_results, 
-        model=resolved_model,
-        embedding_model=embedding_model
+        model=resolved_model
     )
 
 @cli.command()

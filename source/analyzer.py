@@ -42,7 +42,7 @@ def get_client(model_name: str):
     mode = instructor.Mode.MD_JSON if "gemini" in model_name else instructor.Mode.TOOLS
     return instructor.from_litellm(litellm.completion, mode=mode)
 
-def analyze_games(model: str, embedding_model: str, limit: int = 10, dry_run: bool = False, game_id: str = None):
+def analyze_games(model: str, limit: int = 10, dry_run: bool = False, game_id: str = None):
     """
     Fetches un-analyzed games from the DB and analyzes them using Instructor/LiteLLM.
     """
@@ -119,8 +119,7 @@ Result: {game['result']}
                     game_id=game['game_id'],
                     phase=phase_data.phase,
                     analysis_text=embedding_text,
-                    metadata={"opening": game['opening_name']},
-                    embedding_model=embedding_model
+                    metadata={"opening": game['opening_name']}
                 )
                 
         except Exception as e:
