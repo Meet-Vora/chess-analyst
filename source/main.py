@@ -113,6 +113,70 @@ def stats():
         table.add_row("Games Completely Analyzed", str(analyzed_games))
         
         console.print(table)
+        
+        if total_games == 0:
+            return
+            
+        # Discover the user's actual username by finding the most frequently played name
+        cursor.execute("""
+            SELECT player FROM (
+                SELECT white as player, count(*) as count FROM games GROUP BY white
+                UNION ALL
+                SELECT black as player, count(*) as count FROM games GROUP BY black
+            )
+            GROUP BY player
+            ORDER BY sum(count) DESC LIMIT 1
+        """)
+        row = cursor.fetchone()
+        if not row:
+            return
+        username = row[0]
+        
+        # Win / Loss / Draw query
+        cursor.execute("""
+            SELECT
+                SUM(CASE WHEN white = ? AND result = '1-0' THEN 1 ELSE 0 END) as white_wins,
+                SUM(CASE WHEN white = ? AND result = '0-1' THEN 1 ELSE 0 END) as white_losses,
+                SUM(CASE WHEN white = ? AND result = '1/2-1/2' THEN 1 ELSE 0 END) as white_draws,
+                SUM(CASE WHEN black = ? AND result = '0-1' THEN 1 ELSE 0 END) as black_wins,
+                SUM(CASE WHEN black = ? AND result = '1-0' THEN 1 ELSE 0 END) as black_losses,
+                SUM(CASE WHEN black = ? AND result = '1/2-1/2' THEN 1 ELSE 0 END) as black_draws
+            FROM games
+        """, (username, username, username, username, username, username))
+        wld = cursor.fetchone()
+        
+        wld_table = Table(title=f"🏆 Win/Loss Record for '{username}'", box=box.ROUNDED)
+        wld_table.add_column("Color", justify="left", style="white", no_wrap=True)
+        wld_table.add_column("Wins", justify="right", style="bold green")
+        wld_table.add_column("Losses", justify="right", style="bold red")
+        wld_table.add_column("Draws", justify="right", style="bold yellow")
+        
+        wld_table.add_row("⚪ White", str(wld["white_wins"] or 0) if wld else "0", str(wld["white_losses"] or 0) if wld else "0", str(wld["white_draws"] or 0) if wld else "0")
+        wld_table.add_row("⚫ Black", str(wld["black_wins"] or 0) if wld else "0", str(wld["black_losses"] or 0) if wld else "0", str(wld["black_draws"] or 0) if wld else "0")
+        console.print(wld_table)
+        
+        # Termination conditions string search for wins
+        cursor.execute("""
+            SELECT termination FROM games 
+            WHERE (white = ? AND result = '1-0') OR (black = ? AND result = '0-1')
+        """, (username, username))
+        terminations = cursor.fetchall()
+        
+        if terminations:
+            checkmate_wins = sum(1 for t in terminations if t and t["termination"] and "checkmate" in t["termination"].lower())
+            time_wins = sum(1 for t in terminations if t and t["termination"] and "time" in t["termination"].lower())
+            resignation_wins = sum(1 for t in terminations if t and t["termination"] and ("resignation" in t["termination"].lower() or "resigned" in t["termination"].lower()))
+            other_wins = len(terminations) - checkmate_wins - time_wins - resignation_wins
+            
+            term_table = Table(title="🗡️ How You Win", box=box.ROUNDED)
+            term_table.add_column("Condition", justify="left", style="cyan")
+            term_table.add_column("Count", justify="right", style="magenta")
+            term_table.add_row("Checkmate", str(checkmate_wins))
+            term_table.add_row("Time Out", str(time_wins))
+            term_table.add_row("Resignation", str(resignation_wins))
+            term_table.add_row("Other / Unknown", str(other_wins))
+            
+            console.print(term_table)
 
 if __name__ == '__main__':
     cli()

@@ -65,7 +65,8 @@ def parse_and_store_pgn(file_path: str) -> int:
                 "opening_name": headers.get("Opening", "Unknown"),
                 "opening_eco": headers.get("ECO", "???"),
                 "num_moves": total_moves,
-                "source": source
+                "source": source,
+                "termination": headers.get("Termination", "Unknown")
             }
             
             # Attempt to insert

@@ -26,7 +26,8 @@ def init_db():
                 opening_name TEXT,
                 opening_eco TEXT,
                 num_moves INTEGER,
-                source TEXT
+                source TEXT,
+                termination TEXT
             )
         """)
         
@@ -53,6 +54,11 @@ def init_db():
                 cursor.execute(f"ALTER TABLE game_analysis ADD COLUMN {col}")
             except sqlite3.OperationalError:
                 pass
+                
+        try:
+            cursor.execute("ALTER TABLE games ADD COLUMN termination TEXT")
+        except sqlite3.OperationalError:
+            pass
         
         conn.commit()
 
@@ -70,8 +76,8 @@ def insert_game(game_data: dict) -> bool:
         cursor = conn.cursor()
         try:
             cursor.execute("""
-                INSERT INTO games (game_id, pgn_raw, white, black, result, date, time_control, opening_name, opening_eco, num_moves, source)
-                VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
+                INSERT INTO games (game_id, pgn_raw, white, black, result, date, time_control, opening_name, opening_eco, num_moves, source, termination)
+                VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
             """, (
                 game_data.get('game_id'),
                 game_data.get('pgn_raw'),
@@ -83,7 +89,8 @@ def insert_game(game_data: dict) -> bool:
                 game_data.get('opening_name'),
                 game_data.get('opening_eco'),
                 game_data.get('num_moves'),
-                game_data.get('source')
+                game_data.get('source'),
+                game_data.get('termination')
             ))
             conn.commit()
             return True
