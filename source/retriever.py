@@ -1,5 +1,5 @@
 import json
-from google import genai
+import litellm
 from rich.console import Console
 from rich.panel import Panel
 from rich.markdown import Markdown
@@ -8,13 +8,13 @@ from . import vectordb
 
 console = Console()
 
-def query_playstyle(question: str, n_results: int = 5):
+def query_playstyle(question: str, n_results: int = 5, model: str = "gemini/gemini-2.5-flash", embedding_model: str = "gemini/text-embedding-004"):
     """
     Given a natural language query, search the vector DB for relevant game analyses, 
-    and ask Gemini to synthesize an answer.
+    and ask the model to synthesize an answer.
     """
     try:
-        results = vectordb.query_analyses(query_text=question, n_results=n_results)
+        results = vectordb.query_analyses(query_text=question, n_results=n_results, embedding_model=embedding_model)
     except Exception as e:
         console.print(f"[red]Error querying ChromaDB: {e}[/red]")
         return
@@ -48,20 +48,18 @@ Here are the most relevant tactical insights and mistakes from my past games rel
 
 Please synthesize an answer mapping out the recurring themes, habits, and mistakes across these specific games. Focus on narrative, strategic concepts, and specific positional concepts rather than just win/loss counts. Be constructive and specific.
 """
-    client = genai.Client()
     try:
-        with console.status("[bold green]Synthesizing tactical data with Gemini...[/bold green]", spinner="dots"):
-            response = client.models.generate_content(
-                model='gemini-2.5-flash',
-                contents=prompt,
-                config={
-                    'temperature': 0.3
-                }
+        with console.status(f"[bold green]Synthesizing tactical data with {model}...[/bold green]", spinner="dots"):
+            response = litellm.completion(
+                model=model,
+                messages=[{"role": "user", "content": prompt}],
+                temperature=0.3
             )
+            response_text = response.choices[0].message.content
             
         console.print("\n")
         console.print(Panel(
-            Markdown(response.text),
+            Markdown(response_text),
             title="[bold cyan]🧠 AI Playstyle Analysis[/bold cyan]",
             border_style="cyan",
             expand=False
@@ -73,4 +71,4 @@ Please synthesize an answer mapping out the recurring themes, habits, and mistak
             console.print(f"- Game ID: {meta.get('game_id')} ({meta.get('opening')})")
             
     except Exception as e:
-        console.print(f"[red]Error synthesizing final answer with Gemini: {e}[/red]")
+        console.print(f"[red]Error synthesizing final answer with {model}: {e}[/red]")

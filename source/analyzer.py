@@ -2,7 +2,8 @@ import os
 import json
 from pydantic import BaseModel, Field
 from typing import List, Optional
-from google import genai
+import litellm
+import instructor
 from rich.progress import track
 from rich.console import Console
 
@@ -11,16 +12,7 @@ from . import vectordb
 
 console = Console()
 
-AVAILABLE_MODELS = {
-    "gemini": {
-        "id": "gemini-2.5-flash",
-        "display_name": "Gemini 2.5 Flash"
-    },
-    "claude": {
-        "id": "claude-3-5-sonnet-20241022",
-        "display_name": "Claude 3.5 Sonnet"
-    }
-}
+
 
 # These Pydantic models act as "Instruction Contracts" between our code and the LLM.
 # By passing these to the Gemini API via the `response_schema` parameter, the SDK 
@@ -42,11 +34,12 @@ class GameReview(BaseModel):
     phases: List[PhaseAnalysis] = Field(description="A breakdown of the game into its 3 phases")
 
 def get_client():
-    return genai.Client()
+    # Instructor wraps litellm seamlessly to enforce Pydantic structures for ANY provider
+    return instructor.from_litellm(litellm.completion)
 
-def analyze_games(limit: int = 10, dry_run: bool = False, game_id: str = None):
+def analyze_games(limit: int = 10, dry_run: bool = False, game_id: str = None, model: str = "gemini/gemini-2.5-flash", embedding_model: str = "gemini/text-embedding-004"):
     """
-    Fetches un-analyzed games from the DB and analyzes them using Gemini.
+    Fetches un-analyzed games from the DB and analyzes them using Instructor/LiteLLM.
     """
     if game_id:
         game = db.get_game(game_id)
@@ -70,16 +63,13 @@ def analyze_games(limit: int = 10, dry_run: bool = False, game_id: str = None):
 
     client = get_client()
     
-    # Easily swap out the active model key here
-    active_model = AVAILABLE_MODELS["gemini"]
-    
     # Temperature controls the "creativity" of the LLM scale (0.0 to 1.0+). 
     # Because we are asking Gemini to act as an analytical chess coach and output strict, 
     # structured JSON, we use a low temperature to prioritize analytical precision 
     # and determinism over hallucination or creative writing.
     ANALYSIS_TEMPERATURE = 0.2
     
-    for game in track(games, description=f"Analyzing games with {active_model['display_name']}..."):
+    for game in track(games, description=f"Analyzing games with {model}..."):
         prompt = f"""
 You are an expert chess analyst and coach. I am providing you with the PGN of a chess game.
 Please provide a deep, narrative tactical review of the game, breaking it down into opening, middlegame, and endgame phases.
@@ -92,21 +82,13 @@ Opening Played: {game['opening_name']} ({game['opening_eco']})
 Result: {game['result']}
 """
         try:
-            response = client.models.generate_content(
-                model=active_model['id'],
-                contents=prompt,
-                config={
-                    'response_mime_type': 'application/json',
-                    'response_schema': GameReview,
-                    'temperature': ANALYSIS_TEMPERATURE
-                }
+            # Instructor natively returns the Pydantic model
+            review = client.chat.completions.create(
+                model=model,
+                messages=[{"role": "user", "content": prompt}],
+                response_model=GameReview,
+                temperature=ANALYSIS_TEMPERATURE,
             )
-            
-            # The response text will be a JSON string conforming to the GameReview schema
-            review_dict = json.loads(response.text)
-            
-            # Parse it using our Pydantic model just to ensure validity and format
-            review = GameReview(**review_dict)
             
             for phase_data in review.phases:
                 db.save_analysis(
@@ -135,7 +117,8 @@ Result: {game['result']}
                     game_id=game['game_id'],
                     phase=phase_data.phase,
                     analysis_text=embedding_text,
-                    metadata={"opening": game['opening_name']}
+                    metadata={"opening": game['opening_name']},
+                    embedding_model=embedding_model
                 )
                 
         except Exception as e:

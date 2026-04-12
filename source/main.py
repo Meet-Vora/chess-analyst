@@ -21,6 +21,22 @@ def cli():
     """Chess Analyst CLI: A pipeline for reasoning over playstyles."""
     pass
 
+MODEL_ALIASES = {
+    "gemini": "gemini/gemini-2.5-flash",
+    "gemini-flash": "gemini/gemini-2.5-flash",
+    "gemini-pro": "gemini/gemini-2.5-pro",
+    "claude": "anthropic/claude-3-5-sonnet-latest",
+    "claude-sonnet": "anthropic/claude-3-5-sonnet-latest",
+    "gpt": "openai/gpt-4o",
+    "gpt-4o": "openai/gpt-4o",
+    "gpt-4o-mini": "openai/gpt-4o-mini",
+    "grok": "xai/grok-2-latest",
+}
+
+def resolve_model(model_str: str) -> str:
+    """Returns the litellm fully qualified model string for an alias, or the string itself."""
+    return MODEL_ALIASES.get(model_str.lower(), model_str)
+
 @cli.command()
 @click.argument('pgn_file', type=click.Path(exists=True))
 def ingest(pgn_file: str):
@@ -39,9 +55,18 @@ def ingest(pgn_file: str):
 @click.option('--limit', default=10, help="Maximum number of games to analyze in this run.")
 @click.option('--dry-run', is_flag=True, help="Show which games would be analyzed without invoking the LLM.")
 @click.option('--game-id', default=None, help="Process a specific game by ID.")
-def analyze(limit: int, dry_run: bool, game_id: str):
-    """Analyzes unreviewed games via Gemini and embeds insights into ChromaDB."""
-    analyzer.analyze_games(limit=limit, dry_run=dry_run, game_id=game_id)
+@click.option('--model', default='gemini', help="Model to use for analysis (alias or litellm string, e.g. 'claude', 'gpt-4o').")
+@click.option('--embedding-model', default='gemini/text-embedding-004', help="Model to use for embedding (e.g. 'text-embedding-3-small').")
+def analyze(limit: int, dry_run: bool, game_id: str, model: str, embedding_model: str):
+    """Analyzes unreviewed games and embeds insights into ChromaDB."""
+    resolved_model = resolve_model(model)
+    analyzer.analyze_games(
+        limit=limit, 
+        dry_run=dry_run, 
+        game_id=game_id, 
+        model=resolved_model,
+        embedding_model=embedding_model
+    )
 
 @cli.command()
 @click.argument('game_id')
@@ -85,10 +110,18 @@ def game(game_id: str):
 @cli.command()
 @click.argument('question')
 @click.option('--n-results', default=5, help="Number of related game phases to synthesize over.")
-def query(question: str, n_results: int):
+@click.option('--model', default='gemini', help="Model to use for synthesis (alias or litellm string, e.g. 'claude', 'gpt-4o').")
+@click.option('--embedding-model', default='gemini/text-embedding-004', help="Model to use for embedding vector search.")
+def query(question: str, n_results: int, model: str, embedding_model: str):
     """Queries playstyle history by searching past game analyses."""
     console.print(f"[bold cyan]Querying history for:[/bold cyan] {question}")
-    retriever.query_playstyle(question=question, n_results=n_results)
+    resolved_model = resolve_model(model)
+    retriever.query_playstyle(
+        question=question, 
+        n_results=n_results, 
+        model=resolved_model,
+        embedding_model=embedding_model
+    )
 
 @cli.command()
 def stats():

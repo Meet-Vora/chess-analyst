@@ -13,5 +13,7 @@ source/main.py
 source/parser.py
 source/retriever.py
 source/vectordb.py
+tests/test_analyzer.py
 tests/test_db.py
 tests/test_parser.py
+tests/test_vectordb.py

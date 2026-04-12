@@ -25,27 +25,28 @@
 
 Chess Analyst is a highly structured, locally-hosted 5-module ETL pipeline and RAG (Retrieval-Augmented Generation) query engine designed to extract deep analytical insights from historical chess data.
 
-Rather than acting as a simple API wrapper, this project parses raw PGN files, enforces rigorous JSON schema validation on large language models, generates high-dimensional vector embeddings (3072-dimensional via `gemini-embedding-001`), and synthesizes tactical patterns using a robust retrieval pipeline over ChromaDB with a cosine similarity search process. It effectively transforms thousands of forgotten, unstructured games into queryable, relational metadata stored in an idempotent SQLite framework, beautifully rendered locally in your terminal via a powerful `click` CLI.
+Rather than acting as a simple API wrapper, this project parses raw PGN files, enforces rigorous JSON schema validation on large language models (via `instructor` and `litellm`), generates high-dimensional vector embeddings, and synthesizes tactical patterns using a robust retrieval pipeline over ChromaDB with a cosine similarity search process. It effectively transforms thousands of forgotten, unstructured games into queryable, relational metadata stored in an idempotent SQLite framework, beautifully rendered locally in your terminal via a powerful `click` CLI.
 
 ---
 
 ## 🏗️ System Architecture
 
-The pipeline securely handles data extraction, vector mapping, and semantic search locally, reaching out to the Gemini API strictly for raw inference and embedding projections.
+The pipeline securely handles data extraction, vector mapping, and semantic search locally, reaching out to your LLM of choice strictly for raw inference and embedding projections.
 
 ```mermaid
 flowchart TD
     A[📄 PGN File] -->|Extract Moves & Metadata| B(⚙️ Parser<br/>python-chess)
     B -->|Idempotent Hashing| C[(🗄️ SQLite<br/>metadata storage)]
-    C -->|Unanalyzed Games| D(🧠 Analyzer<br/>Gemini 2.5 Flash + Pydantic schema enforcement)
-    D -->|Structured Tactics| E(📏 Embeddings<br/>gemini-embedding-001, 3072d vectors)
+    C -->|Unanalyzed Games| D(🧠 Analyzer<br/>LiteLLM + Instructor schema enforcement)
+    D -->|Structured Tactics| E(📏 Embeddings<br/>Dynamic Vector Embeddings)
     E -->|Store Vectors| F[(📊 ChromaDB<br/>vector store)]
     F -->|Cosine Similarity| G(🔍 RAG Query Engine<br/>semantic search + LLM synthesis)
 ```
 
 ### 🔑 Key Architectural Insights
 
-- **Pydantic Schema Enforcement:** The `analyzer` module forces the Gemini API to respond strictly within a Pydantic-defined JSON schema. This ensures highly reliable downstream ETL parsing and eliminates hallucinated output structures.
+- **Multi-Model Agnostic:** Powered by `litellm` and `instructor`, the system natively supports structured extraction across major providers (OpenAI, Anthropic, Google, xAI) decoupling your pipeline from vendor lock-in.
+- **Pydantic Schema Enforcement:** The `analyzer` module forces the AI to respond strictly within a Pydantic-defined JSON schema. This ensures highly reliable downstream ETL parsing and eliminates hallucinated output structures.
 - **Analytical Precision:** Inference operates at `temperature=0.2`. Because chess analysis is a highly objective, logical task, reducing the creativity parameter guarantees precision on complex tactical sequences.
 - **Idempotent Data Ingestion:** The `parser` generates a unique cryptographic hash of each game's headers. This guarantees that duplicate or overlapping PGN histories can be ingested flawlessly without creating duplicate database records or wasting token inference limits.
 
@@ -56,8 +57,8 @@ flowchart TD
 This project is built intelligently atop powerful modern Python infrastructure:
 - **Language**: Python 3.12+ (orchestrated via `uv`)
 - **CLI Rendering**: `click` for command routing and `rich` for formatting engine.
-- **Inference & RAG**: Google `gemini-2.5-flash` with strictly enforced Pydantic shapes.
-- **Data Layers**: Local `sqlite3` for fast relational hashes alongside a local `ChromaDB` deployment holding 3072d `gemini-embedding-001` vectors.
+- **Inference Stack**: `litellm` and `instructor` to bind Pydantic parsing natively across OpenAI, Anthropic, and Google architectures.
+- **Data Layers**: Local `sqlite3` for fast relational hashes alongside a local `ChromaDB` deployment for dense vector search.
 - **Verification**: Assured component logic via `pytest` operating heavily on mocked API interceptions.
 
 ---
@@ -110,12 +111,14 @@ Sources used for this analysis:
 ## 🚀 Quick Setup
 
 > [!NOTE]
-> If you are just cloning this repository from GitHub, you will need to manually generate your own free Gemini API key and store it locally so the AI has permission to run. We never commit `.env` secret files directly to Git.
+> The system defaults to Google's Gemini models, but strictly supports an agnostic `litellm` interface. You will need to generate API keys for the providers you wish to use. We never commit `.env` secret files directly to Git.
 
-1. **Obtain your Google AI Key**: Go to [Google AI Studio](https://aistudio.google.com/app/apikey) and generate a 100% free API key.
-2. **Save your secret Key**: Right in the main `chess-analyst` folder, create a new file named exactly `.env` and paste your key inside like this:
+1. **Obtain API Keys**: Grab your key for Gemini from [Google AI Studio](https://aistudio.google.com/app/apikey), or equivalents from Anthropic or OpenAI.
+2. **Save your secret Key**: Right in the main `chess-analyst` folder, create a new file named exactly `.env` and paste your keys inside like this:
     ```ini
     GEMINI_API_KEY="your-secret-key"
+    ANTHROPIC_API_KEY="your-anthropic-key"
+    OPENAI_API_KEY="your-openai-key"
     ```
 3. **Install the dependencies**: Open your terminal here and install via `uv`:
     ```bash
@@ -136,9 +139,13 @@ uv run chess-analyst ingest data/raw/your_new_games_file.pgn
 ```
 
 ### Step 2: Analyze & Grade Your Games
-Have Gemini read ingested games and extract tactical arrays. Because the AI maps the vectors and generates the 3072-dimensional arrays for each match, we recommend running small batches of 5-10 games at a time.
+Have your model read ingested games and extract tactical arrays. You can optionally swap out the reasoning engine and the embedding engine via CLI flags.
 ```bash
+# Using defaults (Gemini 2.5 Flash / Gemini Embedding)
 uv run chess-analyst analyze --limit 5
+
+# Or customizing models
+uv run chess-analyst analyze --limit 5 --model claude --embedding-model text-embedding-3-small
 ```
 
 ### Step 3: View Results & Query
@@ -153,7 +160,7 @@ uv run chess-analyst game YOUR-GAME-ID
 **Chat with your entire history:**
 Ask questions about your overall playstyle. The engine will utilize ChromaDB to return similar past mistakes.
 ```bash
-uv run chess-analyst query "I keep losing when I play the Sicilian Defense as black. Based on my past games, what are the biggest endgame mistakes I make?"
+uv run chess-analyst query "Based on my past games, what are the biggest endgame mistakes I make?" --model gpt-4o
 ```
 
 *(You can also use `uv run chess-analyst stats` to check the footprint of your databases).*
@@ -182,7 +189,7 @@ The testing suite relies on 4 core files:
 
 - `source/main.py`: The `click` routing hub and CLI UI definitions.
 - `source/parser.py`: Houses the purely local `python-chess` integration mapping flat PGNs into SQLite metadata blocks.
-- `source/analyzer.py`: The rigid Pydantic engine enforcing JSON contracts with Gemini 2.5 Flash to ensure reliable analysis shapes.
-- `source/vectordb.py`: Defines the `gemini-embedding-001` integration to store multi-dimensional representations of the tactical outputs into Chroma.
+- `source/analyzer.py`: The rigid `instructor` engine enforcing Pydantic contracts across major foundation models.
+- `source/vectordb.py`: Configurable `litellm` integration to store multi-dimensional representations into Chroma.
 - `source/retriever.py`: Synthesizes vector searches via RAG (Retrieval-Augmented Generation).
 - `data/`: The local environment cache containing the raw PGNs, `games.db` SQLite file, and local ChromaDB arrays (`data/chroma/`). Never push this directory to GitHub.

@@ -2,40 +2,39 @@ import pytest
 import json
 from unittest.mock import patch, MagicMock
 from source import analyzer
+from source.analyzer import GameReview, PhaseAnalysis
 
 @patch('source.analyzer.db.save_analysis')
 @patch('source.analyzer.vectordb.add_analysis_embedding')
-@patch('source.analyzer.genai.Client')
-def test_mocked_gemini_analysis_flow(mock_client_class, mock_add_embedding, mock_save_analysis):
+@patch('source.analyzer.get_client')
+def test_mocked_gemini_analysis_flow(mock_get_client, mock_add_embedding, mock_save_analysis):
     """
-    Simulates a flawlessly formatted AI JSON payload returning from Google servers,
+    Simulates a flawlessly formatted AI JSON payload returning from Instructor/LiteLLM,
     validating that Pydantic models structure it cleanly and pass it directly to the 
     sqlite database without actually spinning up physical APIs or Databases.
     """
     # Setup mock Client
     mock_client = MagicMock()
-    mock_client_class.return_value = mock_client
+    mock_get_client.return_value = mock_client
     
-    # Spoof the exact JSON shape that Gemini 2.5 Flash yields via Pydantic Schema
-    mock_json_str = json.dumps({
-        "game_verdict": "A hard fought tactical battle.",
-        "opening_assessment": "Solid foundation in the Caro-Kann.",
-        "phases": [
-            {
-                "phase": "opening",
-                "narrative_summary": "Developed well.",
-                "mistakes": [],
-                "patterns_identified": ["Solid central control"],
-                "critical_moments": [],
-                "tactical_motifs_missed": []
-            }
+    # Spoof the exact Pydantic output that Instructor yields natively
+    mock_review = GameReview(
+        game_verdict="A hard fought tactical battle.",
+        opening_assessment="Solid foundation in the Caro-Kann.",
+        phases=[
+            PhaseAnalysis(
+                phase="opening",
+                narrative_summary="Developed well.",
+                mistakes=[],
+                patterns_identified=["Solid central control"],
+                critical_moments=[],
+                tactical_motifs_missed=[]
+            )
         ]
-    })
+    )
     
-    # Attach our simulated string to the "response.text" field returned by the SDK
-    mock_response = MagicMock()
-    mock_response.text = mock_json_str
-    mock_client.models.generate_content.return_value = mock_response
+    # Attach our simulated Pydantic object to the completion return
+    mock_client.chat.completions.create.return_value = mock_review
 
     # Define a single imaginary game ripped from SQLite
     fake_games = [{
@@ -54,7 +53,7 @@ def test_mocked_gemini_analysis_flow(mock_client_class, mock_add_embedding, mock
             analyzer.analyze_games(limit=1, dry_run=False, game_id=None)
 
     # 1. Did the prompt physically exit the Python loop toward the API?
-    assert mock_client.models.generate_content.call_count == 1
+    assert mock_client.chat.completions.create.call_count == 1
     
     # 2. Did the JSON payload get saved down to our relational SQLite system securely?
     assert mock_save_analysis.call_count == 1
