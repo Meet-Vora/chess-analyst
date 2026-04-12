@@ -10,6 +10,7 @@ from rich.table import Table
 from rich import box
 
 from . import vectordb
+from . import model_config
 
 class Theme(BaseModel):
     name: str = Field(description="Short name of the recurring theme or mistake (e.g., 'Weakness on Long Diagonal', 'Time Trouble Blunders')")
@@ -23,7 +24,7 @@ class QuerySynthesis(BaseModel):
 
 console = Console()
 
-def query_playstyle(question: str, n_results: int = 5, model: str = "gemini/gemini-2.5-flash", embedding_model: str = "gemini/text-embedding-004"):
+def query_playstyle(question: str, model: str, embedding_model: str, n_results: int = 5):
     """
     Given a natural language query, search the vector DB for relevant game analyses, 
     and ask the model to synthesize an answer.
@@ -63,7 +64,7 @@ Here are the most relevant tactical insights and mistakes from my past games rel
 
 Please synthesize an answer mapping out the recurring themes, habits, and mistakes across these specific games. Focus on specific strategic themes and constructive advice.
 """
-    mode = instructor.Mode.GEMINI_JSON if "gemini" in model else instructor.Mode.TOOLS
+    mode = instructor.Mode.MD_JSON if "gemini" in model else instructor.Mode.TOOLS
     client = instructor.from_litellm(litellm.completion, mode=mode)
     try:
         with console.status(f"[bold green]Synthesizing structured tactical data with {model}...[/bold green]", spinner="dots"):
@@ -71,7 +72,7 @@ Please synthesize an answer mapping out the recurring themes, habits, and mistak
                 model=model,
                 messages=[{"role": "user", "content": prompt}],
                 response_model=QuerySynthesis,
-                temperature=0.3
+                temperature=model_config.SYNTHESIS_TEMPERATURE
             )
             
         console.print("\n")

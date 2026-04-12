@@ -9,6 +9,7 @@ from rich.console import Console
 
 from . import db
 from . import vectordb
+from . import model_config
 
 console = Console()
 
@@ -36,10 +37,12 @@ class GameReview(BaseModel):
 
 def get_client(model_name: str):
     # Instructor wraps litellm seamlessly to enforce Pydantic structures for ANY provider
-    mode = instructor.Mode.GEMINI_JSON if "gemini" in model_name else instructor.Mode.TOOLS
+    # We use MD_JSON for Gemini because litellm's tool calling for experimental Gemini models 
+    # sometimes drops choices via Mode.TOOLS, and GEMINI_JSON doesn't work with Litellm wrapping.
+    mode = instructor.Mode.MD_JSON if "gemini" in model_name else instructor.Mode.TOOLS
     return instructor.from_litellm(litellm.completion, mode=mode)
 
-def analyze_games(limit: int = 10, dry_run: bool = False, game_id: str = None, model: str = "gemini/gemini-2.5-flash", embedding_model: str = "gemini/text-embedding-004"):
+def analyze_games(model: str, embedding_model: str, limit: int = 10, dry_run: bool = False, game_id: str = None):
     """
     Fetches un-analyzed games from the DB and analyzes them using Instructor/LiteLLM.
     """
@@ -65,12 +68,6 @@ def analyze_games(limit: int = 10, dry_run: bool = False, game_id: str = None, m
 
     client = get_client(model)
     
-    # Temperature controls the "creativity" of the LLM scale (0.0 to 1.0+). 
-    # Because we are asking Gemini to act as an analytical chess coach and output strict, 
-    # structured JSON, we use a low temperature to prioritize analytical precision 
-    # and determinism over hallucination or creative writing.
-    ANALYSIS_TEMPERATURE = 0.2
-    
     for game in track(games, description=f"Analyzing games with {model}..."):
         prompt = f"""
 You are an expert chess analyst and coach. I am providing you with the PGN of a chess game.
@@ -90,7 +87,7 @@ Result: {game['result']}
                 model=model,
                 messages=[{"role": "user", "content": prompt}],
                 response_model=GameReview,
-                temperature=ANALYSIS_TEMPERATURE,
+                temperature=model_config.ANALYSIS_TEMPERATURE,
             )
             
             for phase_data in review.phases:
