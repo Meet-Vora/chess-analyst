@@ -25,7 +25,7 @@
 
 Chess Analyst is a highly structured, locally-hosted 5-module ETL pipeline and RAG (Retrieval-Augmented Generation) query engine designed to extract deep analytical insights from historical chess data.
 
-Rather than acting as a simple API wrapper, this project parses raw PGN files, enforces rigorous JSON schema validation on large language models (via `instructor` and `litellm`), generates high-dimensional vector embeddings, and synthesizes tactical patterns using a robust retrieval pipeline over ChromaDB with a cosine similarity search process. It effectively transforms thousands of forgotten, unstructured games into queryable, relational metadata stored in an idempotent SQLite framework, beautifully rendered locally in your terminal via a powerful `click` CLI.
+Rather than acting as a simple API wrapper, this project parses raw PGN files, enforces rigorous JSON schema validation on LLMs (via `instructor` and `litellm`), generates vector embeddings, and synthesizes tactical patterns using a robust retrieval pipeline over ChromaDB with a cosine similarity search process. It effectively transforms thousands of forgotten, unstructured games into queryable, relational metadata stored in an idempotent SQLite framework and rendered locally in your terminal via the `click` CLI.
 
 ---
 
@@ -45,7 +45,7 @@ flowchart TD
 
 ### 🔑 Key Architectural Insights
 
-- **Multi-Model Agnostic:** Powered by `litellm` and `instructor`, the system natively supports structured extraction across major providers (OpenAI, Anthropic, Google, xAI) decoupling your pipeline from vendor lock-in.
+- **Multi-Model Agnostic:** Powered by `litellm` and `instructor`, the system natively supports structured extraction across major providers (OpenAI, Anthropic, Google, xAI), allowing for model-agnostic inference.
 - **Pydantic Schema Enforcement:** The `analyzer` module forces the AI to respond strictly within a Pydantic-defined JSON schema. This ensures highly reliable downstream ETL parsing and eliminates hallucinated output structures.
 - **Analytical Precision:** Inference operates at `temperature=0.2`. Because chess analysis is a highly objective, logical task, reducing the creativity parameter guarantees precision on complex tactical sequences.
 - **Idempotent Data Ingestion:** The `parser` generates a unique cryptographic hash of each game's headers. This guarantees that duplicate or overlapping PGN histories can be ingested flawlessly without creating duplicate database records or wasting token inference limits.
@@ -54,18 +54,18 @@ flowchart TD
 
 ## 🛠️ Tech Stack
 
-This project is built intelligently atop powerful modern Python infrastructure:
-- **Language**: Python 3.12+ (orchestrated via `uv`)
-- **CLI Rendering**: `click` for command routing and `rich` for formatting engine.
-- **Inference Stack**: `litellm` and `instructor` to bind Pydantic parsing natively across OpenAI, Anthropic, and Google architectures.
-- **Data Layers**: Local `sqlite3` for fast relational hashes alongside a local `ChromaDB` deployment for dense vector search.
-- **Verification**: Assured component logic via `pytest` operating heavily on mocked API interceptions.
+This project is built using:
+- **Language**: Python 3.12+ (managed via `uv`)
+- **CLI**: `click` for command routing and `rich` for formatting.
+- **Inference**: `litellm` and `instructor` for schema validation.
+- **Database**: Local `sqlite3` for metadata and `ChromaDB` for vector retrieval.
+- **Testing**: `pytest` using mocked API intercepts.
 
 ---
 
 ## 💡 Example Output
 
-Here's an example of the rich terminal rendering when querying the RAG engine against historically analyzed games:
+Here's an example terminal output when querying the RAG engine against analyzed games:
 
 ```
 Querying history for: can you tell me my blunders from all the games you analyzed so far
@@ -111,13 +111,13 @@ Sources used for this analysis:
 ## 🚀 Quick Setup
 
 > [!NOTE]
-> The system defaults to Google's Gemini models, but strictly supports an agnostic `litellm` interface. You will need to generate API keys for the providers you wish to use.
+> The system defaults to Google's Gemini models, but supports an agnostic `litellm` interface. You will need to generate API keys for the providers you wish to use.
 
-1. **Install the dependencies**: Open your terminal here and install the full environment via `uv`:
+1. **Install dependencies**: Open your terminal here and install the environment via `uv`:
     ```bash
     uv sync
     ```
-2. **Run the Interactive Setup**: I designed a single onboarding command that handles API keys, downloads your Chess.com match history, syncs it to the local SQLite database, and automatically analyzes your first batch of games!
+2. **Interactive Setup**: Run the setup command to configure API keys, download your Chess.com history, sync it to SQLite, and analyze your first batch of games:
     ```bash
     uv run chess-analyst setup
     ```
@@ -126,57 +126,57 @@ Sources used for this analysis:
 
 ## 🛠️ Usage
 
-Once your environment is set up (via `chess-analyst setup`), you can utilize the engine manually in 3 simple phases:
+Once your environment is set up (via `chess-analyst setup`), you can utilize the engine via 3 main phases:
 
 ### Phase 1: Download & Ingest (Manual)
-If you didn't use the setup wizard or want to fetch new games, you can download your history directly from Chess.com and ingest it into your secure, local database. 
+If you prefer not to use the setup wizard or want to fetch new games, you can download your history directly from Chess.com and ingest it into the local database.
 ```bash
 uv run python scripts/download_pgn.py YOUR_CHESSCOM_USERNAME
 uv run chess-analyst ingest data/raw/your_new_games_file.pgn
 ```
 
 ### Phase 2: Analyze & Grade Your Games
-Have your model read ingested games and extract tactical arrays. You can optionally swap out the reasoning engine and the embedding engine via CLI flags.
+Process ingested games and extract tactical arrays. You can optionally specify the reasoning model and the embedding model via CLI flags.
 ```bash
 # Using defaults (Gemini 2.5 Flash / Gemini Embedding)
 uv run chess-analyst analyze --limit 5
 
-# Or customizing models
+# Custom models
 uv run chess-analyst analyze --limit 5 --model claude --embedding-model text-embedding-3-small
 ```
 
-### Step 3: View Results & Query
-Get coaching feedback on the data!
+### Phase 3: View Results & Query
+Get feedback on the parsed data.
 
-**Look at a single game specifically:**
-Display the play-by-play breakdown of exactly what you did right and wrong in a specific match.
+**Look at a single game:**
+Display a play-by-play breakdown of a specific match.
 ```bash
 uv run chess-analyst game YOUR-GAME-ID
 ```
 
-**Chat with your entire history:**
-Ask questions about your overall playstyle. The engine will utilize ChromaDB to return similar past mistakes.
+**Chat with your history:**
+Ask questions about your overall playstyle. The engine will utilize ChromaDB to return similar past situations.
 ```bash
 uv run chess-analyst query "Based on my past games, what are the biggest endgame mistakes I make?" --model gpt-4o
 ```
 
-*(You can also use `uv run chess-analyst stats` to check the footprint of your databases).*
+*(You can also use `uv run chess-analyst stats` to check the status of your database).*
 
 ---
 
 ## 🧪 Testing
 
-I maintain strong engineering rigor through a robust test suite. Local operations are validated by mocking the API network layers.
+This project uses `pytest` for unit testing. Network operations are mocked to support fast, isolated local testing runs.
 
 ```bash
 uv run pytest
 ```
 
-The testing suite relies on 4 core files:
-- `test_parser.py`: Validates `python-chess` header extraction, raw string management, and idempotent ID logic.
-- `test_analyzer.py`: Asserts correct enforcement of structured LLM outputs, boundaries, and mocked responses.
-- `test_db.py`: Tracks SQLite storage flows and table schema logic.
-- `test_vectordb.py`: Tests dimensionality matching and payload handling for embedding configurations prior to Chroma DB insertion.
+The test suite covers:
+- `test_parser.py`: Validates header extraction, raw string management, and idempotent ID logic.
+- `test_analyzer.py`: Asserts correct enforcement of structured LLM outputs and boundaries.
+- `test_db.py`: Tests SQLite storage flows and table schema migrations.
+- `test_vectordb.py`: Tests dimensionality matching and payload handling for embedding configurations.
 
 ---
 
@@ -184,9 +184,9 @@ The testing suite relies on 4 core files:
 
 *(For detailed information on how the backend handles vector projections under the hood, check out the `PROJECT_SPEC.md` file.)*
 
-- `source/main.py`: The `click` routing hub and CLI UI definitions.
-- `source/parser.py`: Houses the purely local `python-chess` integration mapping flat PGNs into SQLite metadata blocks.
-- `source/analyzer.py`: The rigid `instructor` engine enforcing Pydantic contracts across major foundation models.
-- `source/vectordb.py`: Configurable `litellm` integration to store multi-dimensional representations into Chroma.
-- `source/retriever.py`: Synthesizes vector searches via RAG (Retrieval-Augmented Generation).
-- `data/`: The local environment cache containing the raw PGNs, `games.db` SQLite file, and local ChromaDB arrays (`data/chroma/`). Never push this directory to GitHub.
+- `source/main.py`: The `click` routing hub and CLI definitions.
+- `source/parser.py`: Python-chess integration mapping flat PGNs into SQLite metadata.
+- `source/analyzer.py`: Inference engine enforcing Pydantic contracts.
+- `source/vectordb.py`: Integration to store vector embeddings.
+- `source/retriever.py`: Synthesizes vector searches via RAG.
+- `data/`: Local environment cache containing the raw PGNs, `games.db` SQLite file, and local ChromaDB arrays.
