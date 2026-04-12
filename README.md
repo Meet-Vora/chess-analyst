@@ -117,7 +117,7 @@ Sources used for this analysis:
     ```bash
     uv sync
     ```
-2. **Run the Interactive Setup**: We designed a single onboarding command that handles API keys, downloads your Chess.com match history, syncs it to the local SQLite database, and automatically analyzes your first batch of games!
+2. **Run the Interactive Setup**: I designed a single onboarding command that handles API keys, downloads your Chess.com match history, syncs it to the local SQLite database, and automatically analyzes your first batch of games!
     ```bash
     uv run chess-analyst setup
     ```
@@ -166,7 +166,7 @@ uv run chess-analyst query "Based on my past games, what are the biggest endgame
 
 ## 🧪 Testing
 
-We uphold strong engineering rigor through a robust test suite. Local operations are validated by mocking the API network layers.
+I maintain strong engineering rigor through a robust test suite. Local operations are validated by mocking the API network layers.
 
 ```bash
 uv run pytest
