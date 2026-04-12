@@ -127,7 +127,9 @@ def query(question: str, n_results: int, model: str, embedding_model: str):
 def stats():
     """Shows statistics across the ingestion and analysis pipeline."""
     db.init_db()
+    import sqlite3
     with db.get_db() as conn:
+        conn.row_factory = sqlite3.Row
         cursor = conn.cursor()
         
         # Game stats
@@ -165,7 +167,7 @@ def stats():
             return
         username = row[0]
         
-        # Win / Loss / Draw query
+        # Win / Loss / Draw query (All Ingested)
         cursor.execute("""
             SELECT
                 SUM(CASE WHEN white = ? AND result = '1-0' THEN 1 ELSE 0 END) as white_wins,
@@ -178,14 +180,31 @@ def stats():
         """, (username, username, username, username, username, username))
         wld = cursor.fetchone()
         
+        # Win / Loss / Draw query (Analyzed only)
+        cursor.execute("""
+            SELECT
+                SUM(CASE WHEN white = ? AND result = '1-0' THEN 1 ELSE 0 END) as white_wins,
+                SUM(CASE WHEN white = ? AND result = '0-1' THEN 1 ELSE 0 END) as white_losses,
+                SUM(CASE WHEN white = ? AND result = '1/2-1/2' THEN 1 ELSE 0 END) as white_draws,
+                SUM(CASE WHEN black = ? AND result = '0-1' THEN 1 ELSE 0 END) as black_wins,
+                SUM(CASE WHEN black = ? AND result = '1-0' THEN 1 ELSE 0 END) as black_losses,
+                SUM(CASE WHEN black = ? AND result = '1/2-1/2' THEN 1 ELSE 0 END) as black_draws
+            FROM games
+            WHERE game_id IN (SELECT DISTINCT game_id FROM game_analysis)
+        """, (username, username, username, username, username, username))
+        wld_analyzed = cursor.fetchone()
+
         wld_table = Table(title=f"🏆 Win/Loss Record for '{username}'", box=box.ROUNDED)
+        wld_table.add_column("Scope", justify="left", style="cyan", no_wrap=True)
         wld_table.add_column("Color", justify="left", style="white", no_wrap=True)
         wld_table.add_column("Wins", justify="right", style="bold green")
         wld_table.add_column("Losses", justify="right", style="bold red")
         wld_table.add_column("Draws", justify="right", style="bold yellow")
         
-        wld_table.add_row("⚪ White", str(wld["white_wins"] or 0) if wld else "0", str(wld["white_losses"] or 0) if wld else "0", str(wld["white_draws"] or 0) if wld else "0")
-        wld_table.add_row("⚫ Black", str(wld["black_wins"] or 0) if wld else "0", str(wld["black_losses"] or 0) if wld else "0", str(wld["black_draws"] or 0) if wld else "0")
+        wld_table.add_row("Ingested", "⚪ White", str(wld["white_wins"] or 0) if wld else "0", str(wld["white_losses"] or 0) if wld else "0", str(wld["white_draws"] or 0) if wld else "0")
+        wld_table.add_row("Ingested", "⚫ Black", str(wld["black_wins"] or 0) if wld else "0", str(wld["black_losses"] or 0) if wld else "0", str(wld["black_draws"] or 0) if wld else "0")
+        wld_table.add_row("Analyzed", "⚪ White", str(wld_analyzed["white_wins"] or 0) if wld_analyzed else "0", str(wld_analyzed["white_losses"] or 0) if wld_analyzed else "0", str(wld_analyzed["white_draws"] or 0) if wld_analyzed else "0")
+        wld_table.add_row("Analyzed", "⚫ Black", str(wld_analyzed["black_wins"] or 0) if wld_analyzed else "0", str(wld_analyzed["black_losses"] or 0) if wld_analyzed else "0", str(wld_analyzed["black_draws"] or 0) if wld_analyzed else "0")
         console.print(wld_table)
         
         # Termination conditions string search for wins
@@ -201,7 +220,7 @@ def stats():
             resignation_wins = sum(1 for t in terminations if t and t["termination"] and ("resignation" in t["termination"].lower() or "resigned" in t["termination"].lower()))
             other_wins = len(terminations) - checkmate_wins - time_wins - resignation_wins
             
-            term_table = Table(title="🗡️ How You Win", box=box.ROUNDED)
+            term_table = Table(title="🗡️ How You Win (All Ingested Games)", box=box.ROUNDED)
             term_table.add_column("Condition", justify="left", style="cyan")
             term_table.add_column("Count", justify="right", style="magenta")
             term_table.add_row("Checkmate", str(checkmate_wins))
