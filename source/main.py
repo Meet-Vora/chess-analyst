@@ -10,6 +10,7 @@ from . import parser
 from . import analyzer
 from . import retriever
 from . import db
+from . import consts
 
 # Load environment logic right away, so SDK clients work correctly
 load_dotenv()
@@ -20,22 +21,6 @@ console = Console()
 def cli():
     """Chess Analyst CLI: A pipeline for reasoning over playstyles."""
     pass
-
-MODEL_ALIASES = {
-    "gemini": "gemini/gemini-2.5-flash",
-    "gemini-flash": "gemini/gemini-2.5-flash",
-    "gemini-pro": "gemini/gemini-2.5-pro",
-    "claude": "anthropic/claude-3-5-sonnet-latest",
-    "claude-sonnet": "anthropic/claude-3-5-sonnet-latest",
-    "gpt": "openai/gpt-4o",
-    "gpt-4o": "openai/gpt-4o",
-    "gpt-4o-mini": "openai/gpt-4o-mini",
-    "grok": "xai/grok-2-latest",
-}
-
-def resolve_model(model_str: str) -> str:
-    """Returns the litellm fully qualified model string for an alias, or the string itself."""
-    return MODEL_ALIASES.get(model_str.lower(), model_str)
 
 @cli.command()
 @click.argument('pgn_file', type=click.Path(exists=True))
@@ -59,7 +44,7 @@ def ingest(pgn_file: str):
 @click.option('--embedding-model', default='gemini/text-embedding-004', help="Model to use for embedding (e.g. 'text-embedding-3-small').")
 def analyze(limit: int, dry_run: bool, game_id: str, model: str, embedding_model: str):
     """Analyzes unreviewed games and embeds insights into ChromaDB."""
-    resolved_model = resolve_model(model)
+    resolved_model = consts.resolve_model(model)
     analyzer.analyze_games(
         limit=limit, 
         dry_run=dry_run, 
@@ -124,7 +109,7 @@ def game(game_id: str):
 def query(question: str, n_results: int, model: str, embedding_model: str):
     """Queries playstyle history by searching past game analyses."""
     console.print(f"[bold cyan]Querying history for:[/bold cyan] {question}")
-    resolved_model = resolve_model(model)
+    resolved_model = consts.resolve_model(model)
     retriever.query_playstyle(
         question=question, 
         n_results=n_results, 
